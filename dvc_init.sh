@@ -9,11 +9,13 @@ dvc add *.gz
 find ./Data ./Workstreams ./Pheno ./Reference -type f -name "*.gz" | parallel -j1 dvc add {}
 
 git add .
-git commit -m "Initialize DVC"
+git remote add origin https://github.com/AndrewSkelton/GSE121212-Analysis-DVC.git
+git commit -m "Initialise"
+git branch -M main
+git push -u origin main
 
-# /20220803__RNAseq__Public__GSE121212.RDS
 
-# # R environment management
+# ## R environment management
 # Notebooks/renv/
 # !Notebooks/renv.lock
 
@@ -29,3 +31,8 @@ git commit -m "Initialize DVC"
 # # System-specific junk
 # .DS_Store
 # Thumbs.db
+
+# # DVC Handlers
+# *.gz
+# *.RDS 
+# *.rds
