@@ -1,0 +1,5 @@
+outs:
+- md5: 17377a16a910f0f7c0beec516d0541e5
+  size: 2662439
+  hash: md5
+  path: t2g.tsv.gz

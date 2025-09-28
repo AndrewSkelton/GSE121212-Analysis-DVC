@@ -1,0 +1,83 @@
+[2025-09-16T16:08:21Z] Reference bundle directory detected; probing: /indices/Human_GENCODE49_GRCh38/reference
+[2025-09-16T16:08:21Z] Using reference in place: /indices/Human_GENCODE49_GRCh38/reference
+[2025-09-16T16:08:21Z] GATK reference: /indices/Human_GENCODE49_GRCh38/reference/genome.fa.gz
+[2025-09-16T16:08:21Z] STAR index directory detected; using in place: /indices/Human_GENCODE49_GRCh38/star_index
+[2025-09-16T16:08:21Z] Salmon index directory detected; using in place: /indices/Human_GENCODE49_GRCh38/salmon_index
+[2025-09-16T16:08:21Z] Variant resources directory detected; using in place: /indices/Human_GENCODE49_GRCh38/variant_resources
+[2025-09-16T16:08:21Z] Kraken2 input: /indices/Human_GENCODE49_GRCh38/minikraken2_v2_8GB_201904_UPDATE
+[2025-09-16T16:08:21Z] Kraken2 DB dir (in place): /indices/Human_GENCODE49_GRCh38/minikraken2_v2_8GB_201904_UPDATE
+[2025-09-16T16:08:21Z] fastp trimming
+[2025-09-16T16:09:34Z] fastp trimming took 73s
+[2025-09-16T16:09:34Z] bbduk cleanup
+[2025-09-16T16:11:52Z] bbduk cleanup took 138s
+[2025-09-16T16:11:52Z] FastQC (raw+clean, concurrent)
+[2025-09-16T16:14:15Z] FastQC (raw+clean, concurrent) took 143s
+[2025-09-16T16:14:15Z] Salmon quant
+[2025-09-16T16:21:31Z] Salmon quant took 436s
+[2025-09-16T16:21:31Z] Kraken2 classification
+[2025-09-16T16:23:05Z] Kraken2 classification took 94s
+[2025-09-16T16:23:05Z] STAR alignment → sorted BAM
+[2025-09-16T16:42:38Z] STAR alignment → sorted BAM took 1173s
+[2025-09-16T16:42:38Z] Salmon quant (from STAR transcriptome BAM)
+[2025-09-16T16:48:35Z] Salmon quant (from STAR transcriptome BAM) took 357s
+[2025-09-16T16:48:35Z] Mosdepth coverage + targets (>=8x)
+[2025-09-16T16:49:51Z] Mosdepth coverage + targets (>=8x) took 76s
+[2025-09-16T16:49:51Z] Note: MarkDuplicates cannot be region-restricted; running on full BAM
+[2025-09-16T16:49:51Z] MarkDuplicates
+[2025-09-16T16:53:41Z] MarkDuplicates took 230s
+[2025-09-16T16:53:41Z] Samtools QC
+[2025-09-16T16:55:41Z] Samtools QC took 120s
+[2025-09-16T16:55:41Z] Inferring strandedness (auto)
+[2025-09-16T16:55:44Z] Inferring strandedness (auto) took 3s
+[2025-09-16T16:55:44Z] Picard CollectRnaSeqMetrics
+[2025-09-16T16:55:47Z] Picard CollectRnaSeqMetrics took 3s
+[2025-09-16T16:55:47Z] SplitNCigarReads (scatter-gather)
+[2025-09-16T16:55:47Z] Preparing SplitNCigarReads shards from targets BED: /cache/SRR8052745/coverage/SRR8052745.targets.8x.classical.bed
+[2025-09-16T16:55:47Z] SplitNCigarReads (targets): 25 contigs → 2 shards (max procs=2)
+[2025-09-16T17:36:57Z] Merging 2 SplitNCigarReads parts (targets)
+[2025-09-16T17:37:56Z] Sorting merged SplitNCigarReads BAM
+[bam_sort_core] merging from 5 files and 8 in-memory blocks...
+[2025-09-16T17:39:49Z] SplitNCigarReads (scatter-gather) took 2642s
+[2025-09-16T17:39:49Z] bcftools calling (scatter raw over targets BED)…
+[2025-09-16T17:39:49Z] bcftools scatter: 25 contigs → 2 shards (max procs=2)
+[2025-09-16T17:45:38Z] Concatenating 2 bcftools shard VCFs
+Checking the headers and starting positions of 2 files
+Concatenating /cache/SRR8052745/variants/parts/SRR8052745.bcftools.raw.part0.vcf.gz	0.585934 seconds
+Concatenating /cache/SRR8052745/variants/parts/SRR8052745.bcftools.raw.part1.vcf.gz	0.488461 seconds
+[2025-09-16T17:45:39Z] bcftools calling (scatter raw over targets BED)… took 350s
+[2025-09-16T17:45:39Z] bcftools filtering… (QUAL>=30, DP>=10)
+Lines   total/split/joined/realigned/mismatch_removed/dup_removed/skipped:	543531/426/0/23750/0/0/0
+[2025-09-16T17:45:43Z] bcftools filtering… (QUAL>=30, DP>=10) took 4s
+[2025-09-16T17:45:43Z] MultiQC summary
+[2025-09-16T17:45:46Z] MultiQC summary took 3s
+[2025-09-16T17:45:46Z] Packaging QC + logs
+[2025-09-16T17:45:46Z] Packaging QC + logs took 0s
+[2025-09-16T17:45:46Z] Packaging variants
+[2025-09-16T17:45:46Z] Packaging variants took 0s
+[2025-09-16T17:45:46Z] Writing metrics + run manifest
+[2025-09-16T17:45:48Z] Writing metrics + run manifest took 2s
+===== TIMINGS SUMMARY =====
+Step                                      Seconds
+fastp trimming                                 73
+bbduk cleanup                                 138
+FastQC (raw+clean, concurrent)                143
+Salmon quant                                  436
+Kraken2 classification                         94
+STAR alignment → sorted BAM                1173
+Salmon quant (from STAR transcriptome BAM)      357
+Mosdepth coverage + targets (>=8x)             76
+MarkDuplicates                                230
+Samtools QC                                   120
+Inferring strandedness (auto)                   3
+Picard CollectRnaSeqMetrics                     3
+SplitNCigarReads (scatter-gather)            2642
+bcftools calling (scatter raw over targets BED)…      350
+bcftools filtering… (QUAL>=30, DP>=10)        4
+MultiQC summary                                 3
+Packaging QC + logs                             0
+Packaging variants                              0
+Writing metrics + run manifest                  2
+TOTAL                                        5847
+[2025-09-16T17:45:48Z] Cleaning expanded alignment directory (keeping logs inside QC tar)
+[2025-09-16T17:45:48Z] Success.
+[2025-09-16T17:45:48Z] Removing job cache: /cache/SRR8052745

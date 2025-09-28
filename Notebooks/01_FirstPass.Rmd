@@ -1,0 +1,290 @@
+---
+title: "GSE121212 Analysis"
+author: "Andrew Skelton"
+date: "`r format(Sys.time(), '%B %d %Y')`"
+output: 
+   html_document:
+      fig_height: 6
+      fig_width: 10
+      keep_md: yes
+      code_folding: hide
+      number_sections: no
+      self_contained: yes
+      theme: cerulean
+      toc: yes
+      toc_float: yes
+---
+
+
+
+```{r SetupRenv}
+library(renv)
+source("activate.R")
+renv::status()
+# renv::snapshot()
+# renv::restore()
+```
+
+
+
+
+```{r load_env, echo=FALSE, warning=FALSE, include=FALSE}
+## Libraries
+library(tidyverse)
+library(knitr)
+library(annotables)
+library(limma)
+library(tximport)
+library(DESeq2)
+library(edgeR)
+library(ggsci)
+library(ggrepel)
+library(patchwork)
+
+
+## Useful Code
+source("00_FuncDigest.R")
+source("00_Functions.R")
+data_t2g <- read_tsv("../Reference/t2g.tsv.gz", col_names = F)
+##
+
+
+## Create Output Directory Structure
+var_out <- "../Workstreams/01_PreProcessing/"
+dir.create(paste0(var_out), recursive = T)
+dir.create(paste0(var_out,"/PCA"))
+dir.create(paste0(var_out,"/Differential_Expression"))
+dir.create(paste0(var_out,"/Volcano"))
+##
+```
+
+
+
+```{r load_pheno, results='asis'}
+data_pheno <- read_csv("../Pheno/GSE121212_Pheno_ADStrat.csv") %>% 
+              as.data.frame %>% 
+              dplyr::select(-PC_Tmp) %>% 
+              dplyr::rename(SexInf = Sex) %>% 
+              left_join({
+                read_csv("../Pheno/GSE121212_PatientPheno.csv") %>% 
+                as.data.frame %>% 
+                dplyr::rename(Patient = ID.pheno)
+              }, by = "Patient")
+
+
+data_pheno %>%
+group_by(SampleType) %>% 
+summarise(N = n()) %>% 
+DT::datatable(rownames=F, extensions="Buttons",
+          options = list(
+                 dom = "Bfrtip",
+                 buttons = list("copy",list(
+                    extend  = 'collection',
+                    buttons = c('csv'),
+                    text    = 'Download'
+                 ))
+              )) 
+```
+
+
+```{r import_salmon, results='hold'}
+import_files      <- list.files("../Data/Salmon_Alignment/", pattern = "*.sf", recursive = T, full.names = T) %>% 
+                     `names<-`({gsub("quant.sf", "", .) %>% basename}) %>% 
+                     .[names(.) %in% data_pheno$SRA_ID] %>% 
+                     .[match(data_pheno$SRA_ID,names(.))]
+import_tx         <- tximport(import_files, 
+                              type        = "salmon", 
+                              varReduce   = T,
+                              tx2gene     = data_t2g, 
+                              countsFromAbundance = "lengthScaledTPM")
+```
+
+
+```{r model_counts, results='hold'}
+##
+## Set counts in DGE Data structure 
+## Make design matrix
+##
+data_dge               <- DGEList(import_tx$counts) 
+model_dm               <- model.matrix(~0 + Var, data = data_pheno) %>%
+                          `colnames<-`(gsub("Var","",colnames(.)))
+##
+
+
+##
+## Filtering strategy for low expression
+##
+model_keep             <- filterByExpr(data_dge, design = model_dm)
+data_dge               <- data_dge %>% .[model_keep,] %>% calcNormFactors
+##
+
+
+##
+## Voom transform counts 
+##
+model_voom             <- voomWithQualityWeights(data_dge, model_dm, plot = T)
+
+## Donor Random Effect
+model_corfit           <- duplicateCorrelation(model_voom,
+                                               design  = model_dm,
+                                               weights = model_voom$weights,
+                                               block   = data_pheno$Patient)
+
+## Voom transform with correlation
+model_voom             <- voomWithQualityWeights(data_dge, model_dm, plot = T,
+                                                 block       = data_pheno$Patient,
+                                                 correlation = model_corfit$cor)
+
+## Refined Dup Cor
+model_corfit           <- duplicateCorrelation(model_voom,
+                                               design  = model_dm,
+                                               weights = model_voom$weights,
+                                               block   = data_pheno$Patient)
+
+
+##
+## Generate DE Model
+##
+model_cont              <- c("AD_LS_vs_NL"         = "AD_LS-AD_NL",
+                             "CAD_LS_vs_CAD_NL"    = "AD_CLS-AD_NL",
+                             "CAD_LS_vs_N"         = "AD_CLS-CTRL_Normal",
+                             "PSO_LS_vs_NL"        = "PSO_LS-PSO_NL",
+                             "AD_LS_vs_PSO_LS"     = "AD_LS-PSO_LS",
+                             "AD_NL_vs_PSO_NL"     = "AD_NL-PSO_NL",
+                             "AD_LS_vs_N"          = "AD_LS-CTRL_Normal",
+                             "PSO_LS_vs_N"         = "PSO_LS-CTRL_Normal",
+                             "AD_NL_vs_N"          = "AD_NL-CTRL_Normal",
+                             "PSO_NL_vs_N"         = "PSO_NL-CTRL_Normal",
+                             "AD_vs_PSO"           = "(AD_LS-AD_NL)-(PSO_LS-PSO_NL)")
+  
+model_cm               <- makeContrasts(contrasts = model_cont, levels = model_dm) %>% 
+                          `colnames<-`(names(model_cont))
+model_tmp              <- lmFit(model_voom, model_dm, block = data_pheno$DonorID, correlation = model_corfit$cor)
+model_fit              <- model_tmp %>% contrasts.fit(model_cm) %>% eBayes
+##
+```
+
+
+
+```{r PCA}
+data_rawpca  <- model_voom$E %>% t %>% prcomp
+data_pca     <- data_rawpca$x %>% as.data.frame %>% 
+                rownames_to_column("SRA_ID") %>% 
+                left_join(data_pheno) 
+
+data_pcv     <- round((data_rawpca$sdev)^2 / sum(data_rawpca$sdev^2)*100, 2)
+
+pca_vars     <- data_pca %>% colnames %>% .[!grepl("^PC",.)] %>% .[c(4,6,7)]
+gg_pca_arr   <- list()
+
+for(i in pca_vars) {
+  i            <- as.character(i)
+  plot_pca     <- ggplot(data_pca, aes_string("PC1","PC2", colour = i)) +
+                    geom_point(size = 4, alpha = 0.6) +
+                    xlab(label=paste0("PC1 (", data_pcv[1], "%)")) +
+                    ylab(label=paste0("PC2 (", data_pcv[2], "%)")) +
+                    theme_bw(base_size = 15) +
+                    # scale_colour_d3("category20") +
+                    # geom_text_repel(aes(label = SampleID), show.legend = F) +
+                    labs(title    = "PCA of Normalised Data") +
+                         #subtitle = paste0("Colour by: ", i)) +
+                    theme(axis.title.x = element_text(size=15),
+                          axis.title.y = element_text(size=15))
+  gg_pca_arr[[i]]  <- plot_pca 
+  
+  png(paste0(var_out,"/PCA/PCA_",gsub("\\(|\\)","",i),".png"),
+      width  = 9,height = 6.98, units  = "in",res    = 300)
+  print(plot_pca); invisible(dev.off())
+}
+
+for(i in 1:length(gg_pca_arr)) {
+  cat('### ',names(gg_pca_arr)[i],' \n')
+  print(gg_pca_arr[[i]])
+  cat('\n \n')
+}
+```
+
+
+
+
+```{r Differential_Expression}
+##
+## Differential Expression
+##
+res_all  <- getRes(model_cm,model_fit,Thres = F)
+res_filt <- getRes(model_cm,model_fit,Thres = T)
+##
+
+##
+## Common Thresholds
+##
+thres_p  <- lapply(res_all, function(x) {x$adj.P.Val %>% -log10(.)}) %>% 
+            unlist %>% max %>% ceiling
+thres_fc <- lapply(res_all, function(x) {x$logFC %>% abs}) %>% 
+            unlist %>% max %>% ceiling 
+##
+
+
+##
+## Generate Volcano Plots
+##
+res_volc2 <- list()
+for(i in names(res_all)) {
+  
+  # if(i %in% names(res_all)[4:6]) {
+  #   
+  #   res_volc[[i]] <- volcano_plot(res_all,i) + 
+  #                    xlim(-thres_fc,thres_fc) +
+  #                    ylim(0,thres_p) + 
+  #                    theme(legend.position = "none")
+  #   
+  #   png(paste0(var_out,"/Volcano/VP_",i,".png"),
+  #       width = 8,height = 8,units = "in",res = 300)
+  #   print(res_volc[[i]]); dev.off()
+  #   
+  # } else {
+    
+    res_volc2[[i]]  <- volcano_plot(res_all,i) + 
+                       # xlim(-thres_fc,thres_fc) +
+                       # ylim(0,thres_p) + 
+                       theme(legend.position = "none")
+    
+    # png(paste0(var_out,"/Volcano/VP_",i,".png"),
+    #     width = 8,height = 8,units = "in",res = 300)
+    # print(res_volc[[i]]); dev.off()
+    
+  # }
+}
+##
+res_volc2
+```
+
+
+
+```{r process_object}
+data_out                           <- list()
+data_out[["Name"]]                 <- "GSE121212"
+data_out[["Description"]]          <- "AD, PsO, LS / NL Matced pairs, Healthy RNAseq"
+data_out[["Author"]]               <- "Andrew Skelton"
+data_out[["Source"]]               <- "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE121212"
+data_out[["Date"]]                 <- "20250928"
+data_out[["MetaData"]]             <- data_pheno
+data_out[["Counts"]]               <- import_tx
+data_out[["DesignMatrix"]]         <- model_dm
+data_out[["ContrastMatrix"]]       <- model_cm
+data_out[["Model"]]                <- model_voom
+data_out[["Fit"]]                  <- model_fit
+data_out[["Differential"]]         <- res_all
+data_out[["Figures"]]              <- list()
+data_out$Figures[["Data_PCA"]]     <- data_pca
+data_out$Figures[["gg_PCA"]]       <- gg_pca_arr
+data_out$Figures[["gg_Volcano"]]   <- res_volc2
+saveRDS(data_out, file = "../20220803__RNAseq__Public__GSE121212.RDS")
+```
+
+
+```{r}
+
+```
+
+

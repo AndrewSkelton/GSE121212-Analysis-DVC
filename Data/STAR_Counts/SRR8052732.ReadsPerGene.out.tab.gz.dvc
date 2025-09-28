@@ -1,0 +1,5 @@
+outs:
+- md5: f7e90f8716344f4f9553b44cf1c54ca0
+  size: 516838
+  hash: md5
+  path: SRR8052732.ReadsPerGene.out.tab.gz

@@ -1,0 +1,43 @@
+{
+  "sample": "SRR8052760",
+  "threads": 8,
+  "tools": {
+    "STAR": "2.7.11b",
+    "salmon": "",
+    "kraken2": "Kraken version 2.1.6",
+    "gatk": "The Genome Analysis Toolkit (GATK) v4.6.2.0\nHTSJDK Version: 4.2.0\nPicard Version: 3.4.0",
+    "bcftools": "bcftools 1.22"
+  },
+  "fastp_before_total_reads": 50432058,
+  "fastp_after_total_reads": 50159506,
+  "fastp_q30_rate_after": 0.884072,
+  "STAR:Number of input reads": "24839875",
+  "STAR:Average input read length": "229",
+  "STAR:Uniquely mapped reads number": "21124885",
+  "STAR:Uniquely mapped reads %": "85.04%",
+  "salmon_total_assigned_reads": 20175498,
+  "kraken_report_head": "1.91\t475672\t475672\tU\t0\tunclassified",
+  "runtime_seconds": {
+    "total": 4149,
+    "steps": {
+      "Kraken2 classification": 82,
+      "SplitNCigarReads (scatter-gather)": 1572,
+      "FastQC (raw+clean, concurrent)": 124,
+      "bbduk cleanup": 114,
+      "fastp trimming": 62,
+      "MarkDuplicates": 110,
+      "bcftools calling (scatter raw over targets BED)\u2026": 172,
+      "Packaging QC + logs": 1,
+      "Inferring strandedness (auto)": 5,
+      "Picard CollectRnaSeqMetrics": 5,
+      "Salmon quant": 420,
+      "STAR alignment \u2192 sorted BAM": 979,
+      "bcftools filtering\u2026 (QUAL>=30, DP>=10)": 3,
+      "Mosdepth coverage + targets (>=8x)": 43,
+      "MultiQC summary": 4,
+      "Packaging variants": 0,
+      "Samtools QC": 77,
+      "Salmon quant (from STAR transcriptome BAM)": 376
+    }
+  }
+}
